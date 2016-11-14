@@ -77,6 +77,13 @@ def launchCommand(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=N
 
 
 def pyAAL(source, mode=0):
+def to_dataframe(out):
+    import pandas as pd
+    d = [e.split('\t') for e in out if '\t' in e]
+    columns = d[1]
+    columns.append('')
+    return pd.DataFrame(d[2:], columns=columns)
+
 
     assert(osp.isfile(source))
     filename, ext = osp.splitext(source)
