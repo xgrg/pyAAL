@@ -76,7 +76,6 @@ def launchCommand(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=N
 	print("Error produce by {}: {}\n".format(binary, error))
 
 
-def pyAAL(source, mode=0):
 def to_dataframe(out):
     import pandas as pd
     d = [e.split('\t') for e in out if '\t' in e]
@@ -84,10 +83,10 @@ def to_dataframe(out):
     columns.append('')
     return pd.DataFrame(d[2:], columns=columns)
 
+def pyAAL(source, contrast, mode=0, verbose=True):
 
     assert(osp.isfile(source))
     filename, ext = osp.splitext(source)
-    print ext
     workingDir = osp.split(source)[0]
     tpl_fp = '/home/grg/git/alfa/pyAAL/pyAAL.tpl'
     matlab_tpl = '/home/grg/denoising/matlab.tpl'
@@ -96,32 +95,39 @@ def to_dataframe(out):
     #0: Local Maxima Labeling - 1: Extended Local Maxima Labeling - 2: Cluster Labeling
 
     tags={ 'spm_mat_file': source,
+            'contrast': contrast,
             'mode':modes[mode]}
 
     template = parseTemplate(tags, tpl_fp)
 
     import tempfile
     code, tmpfile = tempfile.mkstemp(suffix='.m')
-    print 'creating tempfile %s'%tmpfile
+    if verbose:
+        print 'creating tempfile %s'%tmpfile
     createScript(tmpfile, template)
 
     tmpbase = osp.splitext(tmpfile)[0]
     tags={ 'script': tmpbase, 'workingDir': workingDir}
     cmd = parseTemplate(tags, matlab_tpl)
-    print cmd
+    if verbose:
+        print cmd
 
     import subprocess
     proc = subprocess.Popen([cmd], stdout=subprocess.PIPE, shell=True)
     (out, err) = proc.communicate()
 
-    # Returns the STATISTICS part of the output
+    # Returns the STATISTICS part
     start = False
+    old = ''
     res = []
     for each in out.split('\n'):
+        if old == 'CONTRAST':
+            print 'Contrast:', each
         if 'STATISTICS' in each:
             start = True
         if start:
             res.append(each)
+        old = each
     return res
 
 
@@ -134,15 +140,17 @@ if __name__ == '__main__':
                     pyAAL -i SPM.mat --mode 1'''))
 
     parser.add_argument("-i", dest='input', type=str, help='Existing SPM.mat', required=True)
+    parser.add_argument("-c", dest='contrast', type=str, help='Index of the contrast of interest', required=True)
     parser.add_argument("--mode", type=int, help='0: Local Maxima Labeling - 1: Extended Local Maxima Labeling - 2: Cluster Labeling', required=False, default=0)
     parser.add_argument("-o", dest='output', type=str, help='Output textfile', required=False)
 
     args = parser.parse_args()
-    source = args.input
+    spm_mat_file = args.input
     output = args.output
+    contrast = args.contrast
     mode = args.mode
 
-    stats = pyAAL(source, mode)
+    stats = pyAAL(spm_mat_file, contrast, mode)
 
     # Writing the output (the part containing stats) in a file
     # or display on stdout

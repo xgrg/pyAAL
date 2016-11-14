@@ -1,8 +1,10 @@
 
 x = load('$spm_mat_file');
-[x.SPM.Ic]=10;
+[x.SPM.Ic]=$contrast;
+display('CONTRAST');
+display(x.SPM.xCon($contrast).name);
 [x.SPM.Im] = false;
-[x.SPM.k] = 15;
+[x.SPM.k] = 10;
 [x.SPM.pm] = 0.001;
 [x.SPM.u] = 0.001;
 [x.SPM.thresDesc]='none';
@@ -11,5 +13,5 @@ x = load('$spm_mat_file');
 %[hreg,xSPM2,SPM2]=spm_results_ui('Setup', x.SPM);
 %xSPM2= spm_list(xSPM);
 ans = $mode('List', xSPM);
-greg_list_dlabels('txtlist', ans);
+$mode('txtlist', ans);
 
