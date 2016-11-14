@@ -445,7 +445,7 @@ while sum(~isnan(Z)),
 %		hPage = [hPage, h];
 
  		for kkk=size(Perc,2):-1:1,
-			if Perc(kkk) >= 1.0
+			%if Perc(kkk) >= 1.0
 %			if y < 2*dy
 %				h = text(0.5,-5*dy,sprintf('Page %d',...
 %					spm_figure('#page')),...
@@ -482,7 +482,7 @@ while sum(~isnan(Z)),
 				nbvCluster(kkk),PercROI(kkk),nbvROI(kkk));
 			TabLin = TabLin + 1;
 %
-			end
+			%end
 		end
     %---------------------------------------------------------------
 

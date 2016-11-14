@@ -291,13 +291,13 @@ TabDat.ftr{9} = ...
 % (sorted on Z values and grouped by regions)
 %=======================================================================
 if ~length(varargin{2}.Z)
-	text(0.5,y-6*dy,'no suprathreshold clusters',...
-		'HorizontalAlignment','Center',...
-		'FontAngle','Italic','FontWeight','Bold',...
-		'FontSize',FS(16),'Color',[1,1,1]*.5);
+%	text(0.5,y-6*dy,'no suprathreshold clusters',...
+%		'HorizontalAlignment','Center',...
+%		'FontAngle','Italic','FontWeight','Bold',...
+%		'FontSize',FS(16),'Color',[1,1,1]*.5);
 	TabDat.dat = cell(0,3);
 	varargout  = {TabDat};
-	spm('Pointer','Arrow')
+	%spm('Pointer','Arrow')
 	return
 end
 
@@ -417,7 +417,7 @@ while sum(~isnan(Z)),
 % 	hPage = [hPage, h];
 
 %  	x=0.14;
-%  	for kkk=1:size(Dist,2),
+  	for kkk=1:size(Dist,2),
 % 			if y < 2*dy
 % 				h = text(0.5,-5*dy,sprintf('Page %d',...
 % 					spm_figure('#page')),...
@@ -437,9 +437,9 @@ while sum(~isnan(Z)),
 % 				'UserData',Dist(kkk),'ButtonDownFcn','get(gcbo,''UserData'')');
 % 			hPage = [hPage, h];
 % 			x=x+0.07;
-% 			[TabDat.dat{TabLin,1:3}] = deal(XYZmm(:,i),Label(kkk).Nom,Dist(kkk));
-% 			TabLin = TabLin + 1;
-% 	end
+ 			[TabDat.dat{TabLin,1:3}] = deal(XYZmm(:,i),Label(kkk).Nom,Dist(kkk));
+ 			TabLin = TabLin + 1;
+ 	end
 %
 % 	y = y - dy;
 
