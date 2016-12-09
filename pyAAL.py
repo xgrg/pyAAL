@@ -131,6 +131,27 @@ def pyAAL(source, contrast, mode=0, verbose=True):
     return res
 
 
+def AAL_label(region_name, aaltxt = '/usr/local/MATLAB/R2014a/toolbox/spm12/toolbox/aal/ROI_MNI_V5.txt'):
+    import string
+    lines = [e.rstrip('\n') for e in open(aaltxt).readlines() if region_name in e]
+    if len(lines) != 1:
+        raise NameError('Region name returned a not-unique occurrence in %s: %s'%(aaltxt, lines))
+    return string.atoi(lines[0].split('\t')[-1])
+
+def AAL_name(region_label, aaltxt = '/usr/local/MATLAB/R2014a/toolbox/spm12/toolbox/aal/ROI_MNI_V5.txt'):
+    lines = [e.rstrip('\n') for e in open(aaltxt).readlines() if e.split('\t')[-1] == '%s\n'%region_label]
+    if len(lines) != 1:
+        raise NameError('Region name returned a not-unique occurrence in %s: %s'%(aaltxt, lines))
+    return lines[0].split('\t')[1]
+
+def roi_mask(region_name, aalfp = '/usr/local/MATLAB/R2014a/toolbox/spm12/toolbox/aal/ROI_MNI_V5.nii'):
+    from nilearn import image
+    import numpy as np
+    aal = image.load_img(aalfp)
+    d = np.array(aal.dataobj)
+    d[d!=AAL_label(region_name)] = 0
+    return image.new_img_like(aal, d)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
             description=textwrap.dedent('''\
