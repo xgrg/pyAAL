@@ -88,8 +88,8 @@ def pyAAL(source, contrast, mode=0, verbose=True):
     assert(osp.isfile(source))
     filename, ext = osp.splitext(source)
     workingDir = osp.split(source)[0]
-    tpl_fp = '/home/grg/git/alfa/pyAAL/pyAAL.tpl'
-    matlab_tpl = '/home/grg/denoising/matlab.tpl'
+    tpl_fp = osp.join(osp.split(__file__)[0], 'pyAAL.tpl')
+    matlab_tpl = osp.join(osp.split(__file__)[0], 'matlab.tpl')
 
     modes = ['greg_list_dlabels', 'greg_list_plabels', 'greg_clusters_plabels']
     #0: Local Maxima Labeling - 1: Extended Local Maxima Labeling - 2: Cluster Labeling
