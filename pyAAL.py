@@ -83,7 +83,7 @@ def to_dataframe(out):
     columns.append('')
     return pd.DataFrame(d[2:], columns=columns)
 
-def pyAAL(source, contrast, mode=0, verbose=True):
+def pyAAL(source, contrast, k=10, pvalue=0.001, mode=0, verbose=True):
 
     assert(osp.isfile(source))
     filename, ext = osp.splitext(source)
@@ -96,7 +96,9 @@ def pyAAL(source, contrast, mode=0, verbose=True):
 
     tags={ 'spm_mat_file': source,
             'contrast': contrast,
-            'mode':modes[mode]}
+            'mode':modes[mode],
+            'k': k,
+            'p': pvalue}
 
     template = parseTemplate(tags, tpl_fp)
 

@@ -4,7 +4,7 @@ x = load('$spm_mat_file');
 display('CONTRAST');
 display(x.SPM.xCon($contrast).name);
 [x.SPM.Im] = false;
-[x.SPM.k] = 10;
+[x.SPM.k] = $k;
 [x.SPM.pm] = 0.001;
 [x.SPM.u] = 0.001;
 [x.SPM.thresDesc]='none';
