@@ -83,7 +83,8 @@ def to_dataframe(out):
     columns.append('')
     return pd.DataFrame(d[2:], columns=columns)
 
-def pyAAL(source, contrast, k=10, pvalue=0.001, mode=0, verbose=True):
+def pyAAL(source, contrast, k=50, threshold=3.11, mode=0, verbose=True):
+    '''`threshold` is a threshold on the spmT map.'''
 
     assert(osp.isfile(source))
     filename, ext = osp.splitext(source)
@@ -97,8 +98,8 @@ def pyAAL(source, contrast, k=10, pvalue=0.001, mode=0, verbose=True):
     tags={ 'spm_mat_file': source,
             'contrast': contrast,
             'mode':modes[mode],
-            'k': k,
-            'p': pvalue}
+            'threshold': threshold,
+            'k': k}
 
     template = parseTemplate(tags, tpl_fp)
 
@@ -186,4 +187,3 @@ if __name__ == '__main__':
     else:
         for each in stats:
             print each
-
