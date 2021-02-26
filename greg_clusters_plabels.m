@@ -351,7 +351,7 @@ flag_flip = 0;	% Modif BL 4/10/03
 %	end
 
 	%MNI=spm_get(1,'.img','select an labelised atlas');
-    MNI='/usr/local/MATLAB/R2014a/toolbox/spm12/toolbox/aal/ROI_MNI_V5.nii';
+    MNI='/usr/local/MATLAB/R2019a/toolbox/spm12/toolbox/aal/ROI_MNI_V5.nii';
 %    MNI=spm_select(1,'image','Select an labelised atlas',[],...
 %        spm_file(which(mfilename),'fpath'));
 
