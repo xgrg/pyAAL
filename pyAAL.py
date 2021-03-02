@@ -1,60 +1,43 @@
 #!/usr/bin/env python
-from string import Template
+
 import subprocess
-import os.path as osp
-import argparse
-import textwrap
+
+# make sure /tmp is in the Matlab path
+aal_nii = '/usr/local/MATLAB/R2019a/toolbox/spm12/toolbox/aal/ROI_MNI_V5.nii'
+aal_txt = aal_nii.replace('.nii', '.txt')
+
+matlab_cmd = 'matlab'
 
 
-def createScript(source, text):
-    """Very not useful and way over simplistic method for creating a file
+def parseTemplate(d, template):
 
-    Args:
-        source: The absolute name of the script to create
-        text: Text to write into the script
-
-    Returns:
-        True if the file have been created"""
-    try:
-        with open(source, 'w') as f:
-            f.write(text)
-    except IOError:
-        return False
-    return True
-
-
-def parseTemplate(dict, template):
-    """provide simpler string substitutions as described in PEP 292
-
-    Args:
-       dict: dictionary-like object with keys that match the placeholders in
-             the template
-       template: object passed to the constructors template argument.
-
-    Returns:
-        the string substitute"""
+    from string import Template
     with open(template, 'r') as f:
-        return Template(f.read()).safe_substitute(dict)
+        return Template(f.read()).safe_substitute(d)
 
 
 def launchCommand(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                   timeout=None, nice=0):
-    from lib import util
     """Execute a program in a new process
 
     Args:
-    command: a string representing a unix command to execute
-    stdout: this attribute is a file object that provides output from the child process
-    stderr: this attribute is a file object that provides error from the child process
-    timeout: Number of seconds before a process is consider inactive, usefull against deadlock
-    nice: run cmd  with  an  adjusted  niceness, which affects process scheduling
+        command: a string representing a unix command to execute
+        stdout: a file object that provides output from the child process
+        stderr: a file object that provides error from the child process
+        timeout: Number of seconds before a process is consider inactive,
+            useful against deadlock
+        nice: run cmd with an adjusted niceness, which affects process
+            scheduling
 
-    Returns
-    return a 3 elements tuples representing the command execute, the standards output and the standard error message
+    Returns:
+        return a 3 elements tuples representing the command execute, the
+        standards output and the standard error message
 
-    Raises
-    OSError:      the function trying to execute a non-existent file.
-    ValueError :  the command line is called with invalid arguments"""
+    Raises:
+        OSError:      the function trying to execute a non-existent file.
+        ValueError :  the command line is called with invalid arguments"""
+
+    from lib import util
     binary = cmd.split(' ').pop(0)
     if util.which(binary) is None:
         print('Command {} not found'.format(binary))
@@ -64,10 +47,10 @@ def launchCommand(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
 
     (executedCmd, output, error) = util.launchCommand(cmd, stdout, stderr,
                                                       timeout, nice)
-    if not (output is '' or output is 'None' or output is None):
+    if not (output == '' or output == 'None' or output is None):
         print('Output produce by {}: {} \n'.format(binary, output))
 
-    if not (error is '' or error is 'None' or error is None):
+    if not (error == '' or error == 'None' or error is None):
         print('Error produce by {}: {}\n'.format(binary, error))
 
 
@@ -80,39 +63,58 @@ def to_dataframe(out):
     return pd.DataFrame(d[2:], columns=columns)
 
 
-def pyAAL(source, contrast, k=50, threshold=3.11, mode=0, verbose=True):
+def pyAAL(source, contrast, k=50, threshold=3.11, mode=0, verbose=True,
+          aal_nii=aal_nii, matlab_cmd=matlab_cmd):
     '''`threshold` is a threshold on the spmT map.'''
+    import subprocess
+    import tempfile
+    import os.path as op
 
-    assert(osp.isfile(source))
-    filename, ext = osp.splitext(source)
-    workingDir = osp.split(source)[0]
-    tpl_fp = osp.join(osp.split(__file__)[0], 'pyAAL.tpl')
-    matlab_tpl = osp.join(osp.split(__file__)[0], 'matlab.tpl')
+    if not op.isfile(source):
+        raise Exception('%s should be an existing file' % source)
+    if not op.isfile(aal_nii):
+        raise Exception('Please check path to AAL (%s not found)' % aal_nii)
 
-    modes = ['greg_list_dlabels', 'greg_list_plabels', 'greg_clusters_plabels']
-    #0: Local Maxima Labeling - 1: Extended Local Maxima Labeling - 2: Cluster Labeling
+    filename, ext = op.splitext(source)
+    workingDir = op.split(source)[0]
+    tpl_fp = op.join(op.split(__file__)[0], 'pyAAL.tpl')
+    matlab_tpl = op.join(op.split(__file__)[0], 'matlab.tpl')
+
+    modes = ['grg_list_dlabels', 'grg_list_plabels', 'grg_clusters_plabels']
+    # 0: Local Maxima Labeling - 1: Extended Local Maxima Labeling
+    # - 2: Cluster Labeling
+    tags = {'aal_nii': aal_nii}
+    grgf = op.join(op.split(__file__)[0], '%s.m' % modes[mode])
+    template = parseTemplate(tags, grgf)
+
+    fh, fp = tempfile.mkstemp(suffix='.m')
+    w = open(fp, 'w')
+    w.write(template)
+    w.close()
 
     tags = {'spm_mat_file': source,
             'contrast': contrast,
-            'mode': modes[mode],
+            'mode': op.splitext(op.basename(fp))[0],
             'threshold': threshold,
             'k': k}
 
     template = parseTemplate(tags, tpl_fp)
 
-    import tempfile
     code, tmpfile = tempfile.mkstemp(suffix='.m')
     if verbose:
         print('creating tempfile %s' % tmpfile)
-    createScript(tmpfile, template)
 
-    tmpbase = osp.splitext(tmpfile)[0]
-    tags = {'script': tmpbase, 'workingDir': workingDir}
+    with open(tmpfile, 'w') as f:
+        f.write(template)
+
+    tmpbase = op.splitext(tmpfile)[0]
+    tags = {'matlab_cmd': matlab_cmd,
+            'script': tmpbase,
+            'workingDir': workingDir}
     cmd = parseTemplate(tags, matlab_tpl)
     if verbose:
         print(cmd)
 
-    import subprocess
     proc = subprocess.Popen([cmd], stdout=subprocess.PIPE, shell=True)
     (out, err) = proc.communicate()
 
@@ -128,48 +130,56 @@ def pyAAL(source, contrast, k=50, threshold=3.11, mode=0, verbose=True):
         if start:
             res.append(each)
         old = each
+
+    if res == []:
+        error = 'Command returned an empty result. Make sure `%s` is in '\
+                'Matlab path.' % matlab_cmd
+        print(err)
+        raise Exception(error)
     return res
 
 
-aal_txt = '/usr/local/MATLAB/R2019a/toolbox/spm12/toolbox/aal/ROI_MNI_V5.txt'
-aal_nii = '/usr/local/MATLAB/R2019a/toolbox/spm12/toolbox/aal/ROI_MNI_V5.nii'
-
-def AAL_label(region_name, aaltxt=aal_txt):
+def AAL_label(region_name, aal_txt=aal_txt):
     import string
-    lines = [e.rstrip('\n') for e in open(aaltxt).readlines()
+    lines = [e.rstrip('\n') for e in open(aal_txt).readlines()
              if region_name in e]
     if len(lines) != 1:
         msg = 'Region name returned a not-unique occurrence in %s: %s' \
-              % (aaltxt, lines)
+              % (aal_txt, lines)
         raise NameError(msg)
     return string.atoi(lines[0].split('\t')[-1])
 
 
-def AAL_name(region_label, aaltxt=aal_txt):
-    lines = [e.rstrip('\n') for e in open(aaltxt).readlines()
+def AAL_name(region_label, aal_txt=aal_txt):
+    lines = [e.rstrip('\n') for e in open(aal_txt).readlines()
              if e.split('\t')[-1] == '%s\n' % region_label]
     if len(lines) != 1:
         msg = 'Region name returned a not-unique occurrence in %s: %s' \
-              % (aaltxt, lines)
+              % (aal_txt, lines)
         raise NameError(msg)
     return lines[0].split('\t')[1]
 
 
-def roi_mask(region_name, aalfp=aal_nii):
+def roi_mask(region_name, aal_nii=aal_nii):
     from nilearn import image
     import numpy as np
-    aal = image.load_img(aalfp)
+    aal = image.load_img(aal_nii)
     d = np.array(aal.dataobj)
     d[d != AAL_label(region_name)] = 0
     return image.new_img_like(aal, d)
 
 
 if __name__ == '__main__':
+    import argparse
+    import textwrap
+
     desc = 'pyAAL: calls SPM/AAL on a given SPM.mat and collects the '\
            'resulting clusters in a textfile.\n\n'\
            'Usage:\n'\
            'pyAAL -i SPM.mat --mode 1'
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+
+    rdhf = argparse.RawDescriptionHelpFormatter
+    parser = argparse.ArgumentParser(formatter_class=rdhf,
                                      description=textwrap.dedent(desc))
 
     parser.add_argument('-i', dest='input', type=str, help='Existing SPM.mat',
@@ -180,25 +190,25 @@ if __name__ == '__main__':
           '2: Cluster Labeling'
     parser.add_argument('--mode', type=int, required=False, default=0,
                         help=msg)
+    parser.add_argument('--aal_nii', type=str, required=False, default=aal_nii,
+                        help='Path to AAL_MNI_V?.nii')
+    parser.add_argument('--matlab', type=str, required=False, default=matlab_cmd,
+                        help='Path to MATLAB command')
     parser.add_argument('-o', dest='output', type=str, help='Output textfile',
                         required=False)
 
     args = parser.parse_args()
-    spm_mat_file = args.input
-    output = args.output
-    contrast = args.contrast
-    mode = args.mode
-
-    stats = pyAAL(spm_mat_file, contrast, mode)
+    stats = pyAAL(args.input, args.contrast, args.mode, aal_nii=args.aal_nii,
+                  matlab_cmd=args.matlab)
 
     # Writing the output (the part containing stats) in a file
     # or display on stdout
 
     if args.output is not None:
-        f = open(output, 'w')
+        f = open(args.output, 'w')
         for each in stats:
             f.write('%s\n' % each)
         f.close()
     else:
         for each in stats:
-            print(each)
+            print(to_dataframe(each))

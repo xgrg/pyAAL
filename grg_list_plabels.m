@@ -1,7 +1,9 @@
-function varargout = gin_clusters_plabels(varargin)
+function varargout = gin_list_plabels(varargin)
 % Display and analysis of SPM{.}
-% FORMAT TabDat = gin_clusters_plabels('List',SPM,hReg,[Num,Dis,Str])
+% FORMAT TabDat = spm_list('List',SPM,hReg,[Num,Dis,Str])
 % Summary list of local maxima for entire volume of interest
+% FORMAT TabDat = spm_list('ListCluster',SPM,hReg,[Num,Dis,Str])
+% List of local maxima for a single suprathreshold cluster
 %
 % SPM    - structure containing SPM, distribution & filtering details
 %        - spm2
@@ -25,30 +27,33 @@ function varargout = gin_clusters_plabels(varargin)
 %
 %                           ----------------
 % See spm_list.m for more details
-%
 %                           ----------------
-% FORMAT gin_clusters_plabels('TxtList',TabDat,c)
+%
+% FORMAT spm_list('TxtList',TabDat,c)
 % Prints a tab-delimited text version of the table
 % TabDat - Structure containing table data (format as above)
 % c      - Column of table data to start text table at
 %          (E.g. c=3 doesn't print set-level results contained in columns 1 & 2)
-%
 %                           ----------------
+%
 % This function loads the labelised atlas, MNI VOIs & Labels, and the distances
 % between VOIs and Labels.
-% For each cluster (identified by its first local maximum),
-% this function search for the intersected regions with the cluster,
+% The user define a spherical region around the local maximum.
+% For each local maximum (Minimum distance between maxima 8mm) of a cluster,
+% this function search for the intersected regions with the spherical region
+% and the cluster,
 % and displays the table :
-%		- local maximum for the cluster
-%		- the intersected regions for the cluster.
-%		- the voxels pourcents for the cluster belongs to
+%		- local maxima du cluster
+%		- the intersected regions with the spherical region and the cluster.
+%		- the voxels pourcents  with this intersection belongs to
 % 		each of the regions (labels)
 % To Compute Labels & Distances we use the 'gin_det_plabels'
 % routine.
 % ______________________________________________________________________
 %
-% gin_clusters_plabels			B Landeau 26/01/2006
-% _______________________________________________________________________
+% gin_list_plabels.m		B Landeau 26/01/2006
+% ______________________________________________________________________
+%
 %
 
 
@@ -56,16 +61,22 @@ function varargout = gin_clusters_plabels(varargin)
 %-----------------------------------------------------------------------
 %SatWindow = spm_figure('FindWin','Satellite');
 
-
-
 %=======================================================================
 switch lower(varargin{1}), case 'list'                            %-List
 %=======================================================================
-% FORMAT TabDat = gin_clusters_plabels('list',SPM,hReg)
+% FORMAT TabDat = spm_list('list',SPM,hReg)
 
 %-Tolerance for p-value underflow, when computing equivalent Z's
 %-----------------------------------------------------------------------
 tol = eps*10;
+
+% Spherical Region : Default Value is 10 mm
+Rd 	= 10; %spm_input('local maximum radius (mm)',4,'r',10,1,[0,Inf]);
+M   = varargin{2}.M;
+xs	= ceil(Rd/M(1,1));
+xs = abs(xs);
+ys	= ceil(Rd/M(2,2));
+zs	= ceil(Rd/M(3,3));
 
 %-Parse arguments and set maxima number and separation
 %-----------------------------------------------------------------------
@@ -76,7 +87,6 @@ if nargin < 3,	hReg = []; else, hReg = varargin{3}; end
 %-Get current location (to highlight selected voxel in table)
 %-----------------------------------------------------------------------
 % xyzmm     = spm_results_ui('GetCoords');
-% Modif BL 09/09/03
 
 %-Extract data from xSPM
 %-----------------------------------------------------------------------
@@ -109,17 +119,19 @@ else
 	Dis    = 8;
 end
 if length(varargin) > 5
+
 	Title  = varargin{6};
 else
-	Title  = ['volume summary',...
-			' (labels and percentages per cluster)'];
+	Title = ['volume summary',...
+			' (labels and percentages for the entire volume)'];
 end
-% Modif BL 09/09/03
+
+
 
 
 %-Setup graphics panel
 %-----------------------------------------------------------------------
-%spm('Pointer','Watch')
+spm('Pointer','Watch')
 %if ~isempty(SatWindow)
 %	Fgraph = SatWindow;
 %	figure(Fgraph);
@@ -128,7 +140,7 @@ end
 %end
 %spm_results_ui('Clear',Fgraph)
 %FS    = spm('FontSizes');			%-Scaled font sizes
-%PF    = spm_platform('fonts');		%-Font names (for this platform)
+%PF    = spm_platform('fonts');			%-Font names (for this platform)
 
 
 %-Table header & footer
@@ -143,8 +155,6 @@ end
 %if STAT == 'P'
 %	Title = 'Posterior Probabilities';
 %end
-% Modif BL 09/09/03
-
 
 %hAx   = axes('Position',[0.025 bot 0.9 ht],...
 %	'DefaultTextFontSize',FS(8),...
@@ -152,23 +162,23 @@ end
 %	'DefaultTextVerticalAlignment','Baseline',...
 %	'Units','points',...
 %	'Visible','off');
-%
+
 %AxPos = get(hAx,'Position'); set(hAx,'YLim',[0,AxPos(4)])
 %dy    = FS(9);
 %y     = floor(AxPos(4)) - dy;
-
-%text(0,y,['Statistics:  \it\fontsize{',num2str(FS(9)),'}',Title],...
-%	'FontSize',FS(11),'FontWeight','Bold');	y = y - dy/2;
-%line([0 1],[y y],'LineWidth',3,'Color','r'),	y = y - 9*dy/8;
-% Modif BL 09/09/03
 
 %text(0,y,['Working Dir : ',varargin{2}.swd],'FontSize',FS(11),'FontWeight','Bold','Editing','on');
 %y = y - 1.5*dy;
 %text(0,y,varargin{2}.title,'FontSize',FS(11),'FontWeight','Bold');
 %y = y - 1.5*dy;
-%text(0,y,['Labels : \it\fontsize{',num2str(FS(9)),'}',Title],...
+%text(0,y,['Labels:  \it\fontsize{',num2str(FS(9)),'}',Title],...
 %	'FontSize',FS(11),'FontWeight','Bold');
+%y = y - 1.5*dy;
+
+%str1 = sprintf(['Local Maximum Radius : %.1fmm'],Rd);
+%text(0,y,str1,'FontSize',FS(9),'FontWeight','Bold');
 %y = y - dy/2;
+%
 %line([0 1],[y y],'LineWidth',3,'Color','r');
 %y = y - 9*dy/8;
 
@@ -176,9 +186,9 @@ end
 %-Construct table header
 %-----------------------------------------------------------------------
 %set(gca,'DefaultTextFontName',PF.helvetica,'DefaultTextFontSize',FS(8))
-%
-%Hc = [];
-%
+
+Hc = [];
+
 %text(0.01,y - dy/2,'x,y,z {mm}','FontSize',FS(9));
 %text(0.15,y - dy/2,'Label','FontSize',FS(9))
 %text(0.40,y - dy/2,'% Cluster','FontSize',FS(9));
@@ -186,11 +196,10 @@ end
 %text(0.70,y - dy/2,'% Label','FontSize',FS(9));
 %text(0.85,y - dy/2,'Nb Vx Label','FontSize',FS(9));
 
-% Modif BL 12/05/04
 label='nom du label';
 
 
-%-Headers for text table ...
+%-Headers for text table...
 %-----------------------------------------------------------------------
 TabDat.tit = Title;
 
@@ -202,7 +211,6 @@ TabDat.hdr = {	'',		'x,y,z {mm}';...
 		'',		'Nb Vx Label'}';
 
 TabDat.fmt = { '%3.0f %3.0f %3.0f','%s','%3.2f','%6d','%3.2f','%6d'};
-% Modif BL 12/05/04
 
 
 %-Column Locations
@@ -210,8 +218,7 @@ TabDat.fmt = { '%3.0f %3.0f %3.0f','%s','%3.2f','%6d','%3.2f','%6d'};
 %tCol       = [  0.00      0.07 ...				%-Set
 %	        0.16      0.26      0.34 ...			%-Cluster
 %	        0.46      0.55      0.62      0.71      0.80 ...%-Voxel
-%               0.92];						%-XYZ
-% Modif BL 09/09/03
+%                0.92];						%-XYZ
 
 % move to next vertial postion marker
 %-----------------------------------------------------------------------
@@ -224,29 +231,27 @@ TabDat.fmt = { '%3.0f %3.0f %3.0f','%s','%3.2f','%6d','%3.2f','%6d'};
 %-Table filtering note
 %-----------------------------------------------------------------------
 if isinf(Num)
-	TabDat.str = sprintf('table shows first local maximum per cluster.');
+	TabDat.str = sprintf(['table shows at most %d local maxima ',...
+		'> %.1fmm apart per cluster.'],Num,Dis);
 else
-	%TabDat.str = sprintf(['table shows at most %s local maxima ',...
-	%	'> %.1fmm apart per cluster'],Num,Dis);
-	TabDat.str = sprintf('table shows first local maximum per cluster.');
+	TabDat.str = sprintf(['table shows at most %d local maxima ',...
+		'> %.1fmm apart per cluster.'],Num,Dis);
 end
 %text(0.5,4,TabDat.str,'HorizontalAlignment','Center','FontName',PF.helvetica,...
 %    'FontSize',FS(8),'FontAngle','Italic')
-%% Modif BL 09/09/03
-
 
 
 %-Volume, resels and smoothness (if classical inference)
 %-----------------------------------------------------------------------
-%if STAT ~= 'P' ????????
+%if STAT ~= 'P'
 %-----------------------------------------------------------------------
 FWHMmm          = FWHM.*VOX; 				% FWHM {mm}
 Pz              = spm_P(1,0,u,df,STAT,1,n,S);
 Pu              = spm_P(1,0,u,df,STAT,R,n,S);
 try
   Qu              = spm_P_FDR(u,df,STAT,n,QPs);
-catch
-  Qu = nan;
+  catch
+    Qu = nan;
 end
 [P Pn Em En ] = spm_P(1,k,u,df,STAT,R,n,S);
 
@@ -320,6 +325,8 @@ end
 % Includes Darren Gitelman's code for working around
 % spm_max for conjunctions with negative thresholds
 %-----------------------------------------------------------------------
+SPM.XYZmm 	  = varargin{2}.XYZmm;
+
 minz        = abs(min(min(varargin{2}.Z)));
 zscores     = 1 + minz + varargin{2}.Z;
 [N Z XYZ A] = spm_max(zscores,varargin{2}.XYZ);
@@ -338,10 +345,11 @@ N           = N.*V2R;
 %-----------------------------------------------------------------------
 XYZmm = M(1:3,:)*[XYZ; ones(1,size(XYZ,2))];
 
+
 % load MNI ROIs & Labels
 %-----------------------------------------------------------------------
 spm_get_defaults;
-global defaults;
+global defaults
 
 flag_flip = 0;	% Modif BL 4/10/03
 % defaults = L/R -> MNI = L/L
@@ -351,9 +359,9 @@ flag_flip = 0;	% Modif BL 4/10/03
 %	end
 
 	%MNI=spm_get(1,'.img','select an labelised atlas');
-    MNI='/usr/local/MATLAB/R2019a/toolbox/spm12/toolbox/aal/ROI_MNI_V5.nii';
-%    MNI=spm_select(1,'image','Select an labelised atlas',[],...
-%        spm_file(which(mfilename),'fpath'));
+    MNI='$aal_nii';
+    %MNI=spm_select(1,'image','Select an labelised atlas',[],...
+     %   spm_file(which(mfilename),'fpath'));
 
 	MNID=spm_vol(MNI);
 	MNIY = spm_read_vols(MNID);
@@ -362,11 +370,17 @@ flag_flip = 0;	% Modif BL 4/10/03
 	%ROI.ID
 	%ROI.Nom_C
 	%ROI.Nom_L
+	%eval(['load ''',strrep(MNI,'.nii','_Border.mat''')]);
+    load(spm_file(MNI,'suffix','_Border','ext','.mat'));
+	%BORDER_XYZ
+        BORDER_XYZ(1,:)=MNID.mat(1,4)-BORDER_XYZ(1,:);
+	%BORDER_V
 
 %	if flag_flip
 %		defaults.analyze.flip = 1;
 %		flag_flip = 0;
 %	end
+
 
 voiCluster = M(1,1)*M(2,2)*M(3,3);
 voiROI = MNID.mat(1,1)*MNID.mat(2,2)*MNID.mat(3,3);
@@ -403,12 +417,12 @@ while sum(~isnan(Z)),
 %
 %		% added Fgraph term to paginate on Satellite window
 %		%-------------------------------------------------------
-%		h     = text(0.5,-5*dy,...
-%			sprintf('Page %d',spm_figure('#page',Fgraph)),...
-%			'FontName',PF.helvetica,'FontAngle','Italic',...
-%			'FontSize',FS(8));
-%
-%		spm_figure('NewPage',[hPage,h])
+%%		h     = text(0.5,-5*dy,...
+%%			sprintf('Page %d',spm_figure('#page',Fgraph)),...
+%%			'FontName',PF.helvetica,'FontAngle','Italic',...
+%%			'FontSize',FS(8));
+%%
+%%		spm_figure('NewPage',[hPage,h])
 %		hPage = [];
 %		y     = y0;
 %	end
@@ -418,21 +432,29 @@ while sum(~isnan(Z)),
 	[U,i]   = max(Z);			% largest maxima
 	j       = find(A == A(i));		% maxima in cluster
 
-	%- MODIF BL
-	%-Jump to voxel nearest current location
-	[xyzmm,ii] = spm_XYZreg('NearestXYZ', XYZmm(:,i), varargin{2}.XYZmm);
 
-	%save ficp xyzmm -append
-	%-Find selected cluster
-	B         = spm_clusters(varargin{2}.XYZ);
-	jj        = find(B == B(ii));
+		% definition du local maxima = cluster
+		myXYZ=[];
+		for ii=-xs:xs
+			for iii=-ys:ys
+				for iiii=-zs:zs
+					tmp=[ii,iii,iiii]';
+					myXYZ=[myXYZ XYZ(:,i)+tmp];
+				end
+			end
+		end
 
-	loc	    = varargin{2}.XYZmm(:,jj);
+		loc   = M(1:3,:)*[myXYZ; ones(1,size(myXYZ,2))];
+		%XYZmm = M(1:3,:)*[XYZ; ones(1,size(XYZ,2))];
+
+		Q1    = ones(1,size(loc,2));
+		j1    = find(sum((loc - XYZmm(:,i)*Q1).^2) <= Rd^2);
+		loc   = loc(:,j1);
 
 	%-Compute Labels & Percent
     %---------------------------------------------------------------
+		%[Label,Perc] = gin_det_plabels(loc, MNID, ROI);
 		[Label, Perc, nbvCluster, PercROI, nbvROI] = gin_det_plabels(loc, MNIY, MNID, ROI,fact);
-
 
 %		h     = text(0.01,y,sprintf(TabDat.fmt{1},XYZmm(:,i)),...
 %			'FontWeight','Bold',...
@@ -456,7 +478,6 @@ while sum(~isnan(Z)),
 %				hPage = [];
 %				y     = y0;
 %			end
-%
 %			h     = text(0.13,y,sprintf(TabDat.fmt{2},Label(kkk).Nom),	'FontWeight','Bold',...
 %				'UserData',Label(kkk).Nom,'ButtonDownFcn','get(gcbo,''UserData'')');
 %			hPage = [hPage, h];
@@ -476,16 +497,124 @@ while sum(~isnan(Z)),
 %			h     = text(0.85,y,sprintf(TabDat.fmt{6},nbvROI(kkk)),	'FontWeight','Bold',...
 %				'UserData',nbvROI(kkk),'ButtonDownFcn','get(gcbo,''UserData'')');
 %			hPage = [hPage, h];
-%
+
 %			y = y - dy;
 			[TabDat.dat{TabLin,1:6}] = deal(XYZmm(:,i),Label(kkk).Nom,Perc(kkk),...
 				nbvCluster(kkk),PercROI(kkk),nbvROI(kkk));
 			TabLin = TabLin + 1;
-%
+
 			%end
 		end
     %---------------------------------------------------------------
 
+	%TabLin = TabLin + 1;
+
+	%-Print Num secondary maxima (> Dis mm apart)
+    	%---------------------------------------------------------------
+	[l q] = sort(-Z(j));				% sort on Z value
+	D     = i;
+	for i = 1:length(q)
+	    d = j(q(i)); % ----- a voir
+	    if min(sqrt(sum((XYZmm(:,D)-XYZmm(:,d)*ones(1,size(D,2))).^2)))>Dis;
+
+		if length(D) < Num
+
+			% Paginate if necessary
+			%-----------------------------------------------
+%			if y < dy
+%				h = text(0.5,-5*dy,sprintf('Page %d',...
+%					spm_figure('#page')),...
+%					'FontName',PF.helvetica,...
+%					'FontAngle','Italic',...
+%					'FontSize',FS(8));
+%				spm_figure('NewPage',[hPage,h])
+%				hPage = [];
+%				y     = y0;
+%			end
+
+			% Compute Labels & Distances
+			%-----------------------------------------------
+			% definition du local maxima = cluster
+			myXYZ=[];
+
+			for ii=-xs:xs
+				for iii=-ys:ys
+					for iiii=-zs:zs
+						tmp=[ii,iii,iiii]';
+						myXYZ=[myXYZ XYZ(:,d)+tmp];
+					end
+				end
+			end
+
+			loc   = M(1:3,:)*[myXYZ; ones(1,size(myXYZ,2))];
+			Q1    = ones(1,size(loc,2));
+			j1    = find(sum((loc - XYZmm(:,d)*Q1).^2) <= Rd^2);
+			loc   = loc(:,j1);
+
+			%[Label,Perc] = gin_det_plabels(loc, MNID, ROI);
+			[Label, Perc, nbvCluster, PercROI, nbvROI] = gin_det_plabels(loc, MNIY, MNID, ROI,fact);
+
+%			h     = text(0.01,y,...
+%				sprintf(TabDat.fmt{1},XYZmm(:,d)),...
+%				'Tag','ListXYZ',...
+%				'ButtonDownFcn',[...
+%					'spm_mip_ui(''SetCoords'',',...
+%					'get(gcbo,''UserData''));'],...
+%				'Interruptible','off','BusyAction','Cancel',...
+%				'UserData',XYZmm(:,d));
+%			HlistXYZ = [HlistXYZ, h];
+%			hPage = [hPage, h];
+
+ 			for kkk=size(Perc,2):-1:1,
+				%if Perc(kkk) >= 1.0
+%				if y < 2*dy
+%					h = text(0.5,-5*dy,sprintf('Page %d',...
+%						spm_figure('#page')),...
+%						'FontName',PF.helvetica,...
+%						'FontAngle','Italic',...
+%						'FontSize',FS(8));
+%					spm_figure('NewPage',[hPage,h])
+%					hPage = [];
+%					y     = y0;
+%				end
+%				h     = text(0.13,y,sprintf(TabDat.fmt{2},Label(kkk).Nom),...
+%					'UserData',Label(kkk).Nom,...
+%					'ButtonDownFcn','get(gcbo,''UserData'')');
+%				hPage = [hPage, h];
+%
+%				h     = text(0.40,y,sprintf(TabDat.fmt{3},Perc(kkk)),...
+%					'UserData',Perc(kkk),...
+%					'ButtonDownFcn','get(gcbo,''UserData'')');
+%				hPage = [hPage, h];
+%
+%				h     = text(0.55,y,sprintf(TabDat.fmt{4},nbvCluster(kkk)),...
+%					'UserData',nbvCluster(kkk),...
+%					'ButtonDownFcn','get(gcbo,''UserData'')');
+%				hPage = [hPage, h];
+%
+%				h     = text(0.70,y,sprintf(TabDat.fmt{5},PercROI(kkk)),...
+%					'UserData',PercROI(kkk),...
+%					'ButtonDownFcn','get(gcbo,''UserData'')');
+%				hPage = [hPage, h];
+%
+%				h     = text(0.85,y,sprintf(TabDat.fmt{6},nbvROI(kkk)),...
+%					'UserData',nbvROI(kkk),...
+%					'ButtonDownFcn','get(gcbo,''UserData'')');
+%				hPage = [hPage, h];
+%
+%
+%				y = y - dy;
+				[TabDat.dat{TabLin,1:6}] = deal(XYZmm(:,d),Label(kkk).Nom,Perc(kkk),...
+					nbvCluster(kkk),PercROI(kkk),nbvROI(kkk));
+			    	TabLin = TabLin + 1;
+
+				%end
+			end
+			D     = [D d];
+			%TabLin = TabLin+1;
+		end
+	    end
+	end
 
 	Z(j) = NaN;		% Set local maxima to NaN
 end				% end region
@@ -499,9 +628,9 @@ end				% end region
 %		'FontName',PF.helvetica,'FontSize',FS(8),'FontAngle','Italic');
 %	spm_figure('NewPage',[hPage,h])
 %end
-%
-%%-End: Store TabDat in UserData of axes & reset pointer
-%%=======================================================================
+
+%-End: Store TabDat in UserData of axes & reset pointer
+%=======================================================================
 %h      = uicontextmenu('Tag','TabDat',...
 %		'UserData',TabDat);
 %set(gca,'UIContextMenu',h,...
@@ -511,7 +640,7 @@ end				% end region
 %uimenu(h,'Separator','on','Label','Print text table',...
 %	'Tag','TD_TxtTab',...
 %	'CallBack',...
-%	'gin_clusters_plabels(''txtlist'',get(get(gcbo,''Parent''),''UserData''),3)',...
+%	'gin_list_plabels(''txtlist'',get(get(gcbo,''Parent''),''UserData''),3)',...
 %	'Interruptible','off','BusyAction','Cancel');
 %uimenu(h,'Separator','off','Label','Extract table data structure',...
 %	'Tag','TD_Xdat',...
@@ -519,9 +648,9 @@ end				% end region
 %	'Interruptible','off','BusyAction','Cancel');
 %uimenu(h,'Separator','on','Label','help',...
 %	'Tag','TD_Xdat',...
-%	'CallBack','spm_help(''gin_clusters_plabels'')',...
+%	'CallBack','spm_help(''gin_list_plabels'')',...
 %	'Interruptible','off','BusyAction','Cancel');
-%
+
 %-Setup registry
 %-----------------------------------------------------------------------
 %set(hAx,'UserData',struct('hReg',hReg,'HlistXYZ',HlistXYZ))
@@ -534,10 +663,12 @@ varargout = {TabDat};
 
 
 
+
+
 %=======================================================================
-case 'txtlist',                                  %-Print ASCII text table
+case 'txtlist'                                  %-Print ASCII text table
 %=======================================================================
-% FORMAT gin_clusters_plabels('TxtList',TabDat,c)
+% FORMAT spm_list('TxtList',TabDat,c)
 
 if nargin<2, error('Insufficient arguments'), end
 if nargin<3, c=1; else, c=varargin{3}; end
@@ -571,6 +702,7 @@ fprintf('%c','-'*ones(1,80)), fprintf('\n')
 %-----------------------------------------------------------------------
 fprintf('%s\n',TabDat.ftr{:})
 fprintf('%c','='*ones(1,80)), fprintf('\n\n')
+
 
 
 

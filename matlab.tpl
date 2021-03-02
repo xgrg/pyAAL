@@ -1,1 +1,1 @@
-matlab -nodisplay -nodesktop -nosplash -nojvm -r "addpath('$workingDir');run('$script');quit"
+$matlab_cmd -nodisplay -nodesktop -nosplash -nojvm -r "addpath('$workingDir');run('$script');quit"
